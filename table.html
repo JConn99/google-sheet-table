@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: transparent;
+}
+
+#custom-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+th {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: #f9fafb;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+}
+</style>
+</head>
+<body>
+<div id="custom-table">
+  <div class="loading">Loading data...</div>
+</div>
+
+<script>
+var API_URL = 'https://script.google.com/macros/s/AKfycbzAhG4WtObR3IpGeCcsnmp6RKImp3f_cU_S4xM-paDpELd4UxizE_Yfp_cbtGLPQY2m6w/exec';
+
+fetch(API_URL)
+  .then(function(res) { return res.json(); })
+  .then(function(response) {
+    var data = response.data;
+    var tableDiv = document.getElementById('custom-table');
+    
+    if (!data || data.length === 0) {
+      tableDiv.innerHTML = '<p>No data available</p>';
+      return;
+    }
+    
+    var headers = Object.keys(data[0]);
+    var html = '<table><thead><tr>';
+    
+    for (var i = 0; i < headers.length; i++) {
+      html += '<th>' + headers[i] + '</th>';
+    }
+    html += '</tr></thead><tbody>';
+    
+    for (var j = 0; j < data.length; j++) {
+      html += '<tr>';
+      for (var k = 0; k < headers.length; k++) {
+        var value = data[j][headers[k]] || '';
+        html += '<td>' + value + '</td>';
+      }
+      html += '</tr>';
+    }
+    
+    html += '</tbody></table>';
+    tableDiv.innerHTML = html;
+  })
+  .catch(function(error) {
+    console.error('Error:', error);
+    document.getElementById('custom-table').innerHTML = '<p style="color: red;">Error loading data.</p>';
+  });
+</script>
+</body>
+</html>
