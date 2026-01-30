@@ -95,6 +95,7 @@ var percentageColumns = [
 ];
 
 var tableData = [];
+var tableHeaders = [];
 var currentSort = { column: null, direction: 'asc' };
 
 function formatValue(header, value) {
@@ -114,7 +115,6 @@ function formatValue(header, value) {
 }
 
 function getRawValue(header, value) {
-  // Return the raw numeric value for sorting
   if (value === '' || value === null || value === undefined) {
     return 0;
   }
@@ -128,10 +128,9 @@ function getRawValue(header, value) {
   return isNaN(num) ? value : num;
 }
 
-function sortTable(columnIndex, headers) {
-  var column = headers[columnIndex];
+function sortTable(columnIndex) {
+  var column = tableHeaders[columnIndex];
   
-  // Toggle direction if clicking same column
   if (currentSort.column === columnIndex) {
     currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
   } else {
@@ -143,7 +142,6 @@ function sortTable(columnIndex, headers) {
     var aVal = getRawValue(column, a[column]);
     var bVal = getRawValue(column, b[column]);
     
-    // Handle string vs number comparison
     if (typeof aVal === 'string' && typeof bVal === 'string') {
       aVal = aVal.toLowerCase();
       bVal = bVal.toLowerCase();
@@ -154,26 +152,26 @@ function sortTable(columnIndex, headers) {
     return 0;
   });
   
-  renderTable(headers);
+  renderTable();
 }
 
-function renderTable(headers) {
+function renderTable() {
   var html = '<table><thead><tr>';
   
-  for (var i = 0; i < headers.length; i++) {
+  for (var i = 0; i < tableHeaders.length; i++) {
     var sortClass = 'sortable';
     if (currentSort.column === i) {
       sortClass = currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc';
     }
-    html += '<th class="' + sortClass + '" onclick="sortTable(' + i + ', ' + JSON.stringify(headers) + ')">' + headers[i] + '</th>';
+    html += '<th class="' + sortClass + '" data-column="' + i + '">' + tableHeaders[i] + '</th>';
   }
   html += '</tr></thead><tbody>';
   
   for (var j = 0; j < tableData.length; j++) {
     html += '<tr>';
-    for (var k = 0; k < headers.length; k++) {
-      var value = tableData[j][headers[k]];
-      var formattedValue = formatValue(headers[k], value);
+    for (var k = 0; k < tableHeaders.length; k++) {
+      var value = tableData[j][tableHeaders[k]];
+      var formattedValue = formatValue(tableHeaders[k], value);
       html += '<td>' + formattedValue + '</td>';
     }
     html += '</tr>';
@@ -181,6 +179,15 @@ function renderTable(headers) {
   
   html += '</tbody></table>';
   document.getElementById('custom-table').innerHTML = html;
+  
+  // Add event listeners after rendering
+  var ths = document.querySelectorAll('th[data-column]');
+  for (var i = 0; i < ths.length; i++) {
+    ths[i].addEventListener('click', function() {
+      var columnIndex = parseInt(this.getAttribute('data-column'));
+      sortTable(columnIndex);
+    });
+  }
 }
 
 fetch(API_URL)
@@ -194,8 +201,8 @@ fetch(API_URL)
       return;
     }
     
-    var headers = Object.keys(tableData[0]);
-    renderTable(headers);
+    tableHeaders = Object.keys(tableData[0]);
+    renderTable();
   })
   .catch(function(error) {
     console.error('Error:', error);
