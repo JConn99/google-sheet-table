@@ -73,13 +73,21 @@ var percentageColumns = [
 ];
 
 function formatValue(header, value) {
+  // If value is empty, null, or undefined, return 0
+  if (value === '' || value === null || value === undefined) {
+    return '0';
+  }
+  
   if (percentageColumns.indexOf(header) !== -1) {
     // Convert decimal to percentage (0.155 -> 15.5%)
     var numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       return (numValue * 100).toFixed(1) + '%';
     }
+    // If it's a percentage column but not a number, show 0%
+    return '0.0%';
   }
+  
   return value;
 }
 
@@ -105,7 +113,7 @@ fetch(API_URL)
     for (var j = 0; j < data.length; j++) {
       html += '<tr>';
       for (var k = 0; k < headers.length; k++) {
-        var value = data[j][headers[k]] || '';
+        var value = data[j][headers[k]];
         var formattedValue = formatValue(headers[k], value);
         html += '<td>' + formattedValue + '</td>';
       }
