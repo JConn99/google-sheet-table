@@ -62,6 +62,27 @@ tbody tr:hover {
 <script>
 var API_URL = 'https://script.google.com/macros/s/AKfycbzAhG4WtObR3IpGeCcsnmp6RKImp3f_cU_S4xM-paDpELd4UxizE_Yfp_cbtGLPQY2m6w/exec';
 
+// Columns that should be formatted as percentages (exact lowercase names from your sheet)
+var percentageColumns = [
+  'saturday_poss_points_per',
+  'saturday_win_per',
+  'sunday_poss_points_per',
+  'sunday_win_per',
+  'total_poss_points_per',
+  'total_win_per'
+];
+
+function formatValue(header, value) {
+  if (percentageColumns.indexOf(header) !== -1) {
+    // Convert decimal to percentage (0.155 -> 15.5%)
+    var numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      return (numValue * 100).toFixed(1) + '%';
+    }
+  }
+  return value;
+}
+
 fetch(API_URL)
   .then(function(res) { return res.json(); })
   .then(function(response) {
@@ -74,10 +95,6 @@ fetch(API_URL)
     }
     
     var headers = Object.keys(data[0]);
-    
-    // DEBUG: Log the actual column names
-    console.log('Column names from API:', headers);
-    
     var html = '<table><thead><tr>';
     
     for (var i = 0; i < headers.length; i++) {
@@ -89,7 +106,8 @@ fetch(API_URL)
       html += '<tr>';
       for (var k = 0; k < headers.length; k++) {
         var value = data[j][headers[k]] || '';
-        html += '<td>' + value + '</td>';
+        var formattedValue = formatValue(headers[k], value);
+        html += '<td>' + formattedValue + '</td>';
       }
       html += '</tr>';
     }
