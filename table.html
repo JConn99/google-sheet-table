@@ -19,22 +19,14 @@ body {
   border: 1px solid #e5e7eb;
 }
 
-#filter-container input,
-#filter-container select {
+#filter-container input {
   padding: 8px 12px;
   margin: 5px;
   border: 1px solid #d1d5db;
   border-radius: 4px;
   font-size: 14px;
   font-family: inherit;
-}
-
-#filter-container input {
-  min-width: 200px;
-}
-
-#filter-container select {
-  min-width: 150px;
+  min-width: 250px;
 }
 
 #filter-container button {
@@ -53,8 +45,18 @@ body {
   background: #5568d3;
 }
 
+#filter-container button.active {
+  background: #764ba2;
+}
+
 .filter-row {
-  margin: 5px 0;
+  margin: 10px 0;
+}
+
+.column-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 #custom-table {
@@ -132,19 +134,20 @@ tbody tr:hover {
 <body>
 <div id="filter-container">
   <div class="filter-row">
-    <strong>Search:</strong>
-    <input type="text" id="search-input" placeholder="Search all columns..." onkeyup="applyFilters()">
+    <strong>Search Last Name:</strong>
+    <input type="text" id="search-input" placeholder="Search last name..." onkeyup="applyFilters()">
   </div>
+  
   <div class="filter-row">
-    <strong>Filter by Column:</strong>
-    <select id="filter-column" onchange="applyFilters()">
-      <option value="">All Columns</option>
-    </select>
-    <input type="text" id="filter-value" placeholder="Filter value..." onkeyup="applyFilters()">
+    <strong>Show Columns:</strong>
+    <div class="column-filters">
+      <button id="btn-saturday" onclick="filterColumns('saturday')">Saturday Info</button>
+      <button id="btn-sunday" onclick="filterColumns('sunday')">Sunday Info</button>
+      <button id="btn-total" onclick="filterColumns('total')">Total Info</button>
+      <button onclick="clearFilters()">Clear Filters</button>
+    </div>
   </div>
-  <div class="filter-row">
-    <button onclick="clearFilters()">Clear Filters</button>
-  </div>
+  
   <div class="result-count" id="result-count"></div>
 </div>
 
@@ -165,9 +168,11 @@ var percentageColumns = [
 ];
 
 var tableData = [];
-var tableHeaders = [];
+var allHeaders = [];
+var displayHeaders = [];
 var filteredData = [];
 var currentSort = { column: null, direction: 'asc' };
+var activeColumnFilter = null;
 
 function formatValue(header, value) {
   if (value === '' || value === null || value === undefined) {
@@ -200,12 +205,11 @@ function getRawValue(header, value) {
 }
 
 function getDisplayValue(header, value) {
-  // Get the value as it appears in the table for filtering
   return formatValue(header, value).toString().toLowerCase();
 }
 
 window.sortTable = function(columnIndex) {
-  var column = tableHeaders[columnIndex];
+  var column = displayHeaders[columnIndex];
   
   if (currentSort.column === columnIndex) {
     currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
@@ -231,29 +235,45 @@ window.sortTable = function(columnIndex) {
   renderTable();
 }
 
+window.filterColumns = function(type) {
+  activeColumnFilter = type;
+  
+  // Remove active class from all buttons
+  document.getElementById('btn-saturday').classList.remove('active');
+  document.getElementById('btn-sunday').classList.remove('active');
+  document.getElementById('btn-total').classList.remove('active');
+  
+  // Add active class to clicked button
+  document.getElementById('btn-' + type).classList.add('active');
+  
+  // Always include last_name column
+  displayHeaders = ['last_name'];
+  
+  // Add columns based on filter type
+  for (var i = 0; i < allHeaders.length; i++) {
+    var header = allHeaders[i];
+    if (header === 'last_name') continue;
+    
+    if (type === 'saturday' && header.indexOf('saturday') !== -1) {
+      displayHeaders.push(header);
+    } else if (type === 'sunday' && header.indexOf('sunday') !== -1) {
+      displayHeaders.push(header);
+    } else if (type === 'total' && header.indexOf('total') !== -1) {
+      displayHeaders.push(header);
+    }
+  }
+  
+  applyFilters();
+}
+
 window.applyFilters = function() {
   var searchTerm = document.getElementById('search-input').value.toLowerCase();
-  var filterColumn = document.getElementById('filter-column').value;
-  var filterValue = document.getElementById('filter-value').value.toLowerCase();
   
   filteredData = tableData.filter(function(row) {
-    // Apply global search
+    // Filter by last_name only
     if (searchTerm) {
-      var matchFound = false;
-      for (var i = 0; i < tableHeaders.length; i++) {
-        var displayValue = getDisplayValue(tableHeaders[i], row[tableHeaders[i]]);
-        if (displayValue.indexOf(searchTerm) !== -1) {
-          matchFound = true;
-          break;
-        }
-      }
-      if (!matchFound) return false;
-    }
-    
-    // Apply column-specific filter
-    if (filterColumn && filterValue) {
-      var columnValue = getDisplayValue(filterColumn, row[filterColumn]);
-      if (columnValue.indexOf(filterValue) === -1) {
+      var lastName = getDisplayValue('last_name', row['last_name']);
+      if (lastName.indexOf(searchTerm) === -1) {
         return false;
       }
     }
@@ -261,7 +281,6 @@ window.applyFilters = function() {
     return true;
   });
   
-  // Update result count
   document.getElementById('result-count').textContent = 
     'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
   
@@ -270,31 +289,40 @@ window.applyFilters = function() {
 
 window.clearFilters = function() {
   document.getElementById('search-input').value = '';
-  document.getElementById('filter-column').value = '';
-  document.getElementById('filter-value').value = '';
+  activeColumnFilter = null;
+  
+  // Remove active class from all buttons
+  document.getElementById('btn-saturday').classList.remove('active');
+  document.getElementById('btn-sunday').classList.remove('active');
+  document.getElementById('btn-total').classList.remove('active');
+  
+  // Show all columns
+  displayHeaders = allHeaders.slice();
   filteredData = tableData.slice();
+  
   document.getElementById('result-count').textContent = 
     'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
+  
   renderTable();
 }
 
 function renderTable() {
   var html = '<table><thead><tr>';
   
-  for (var i = 0; i < tableHeaders.length; i++) {
+  for (var i = 0; i < displayHeaders.length; i++) {
     var sortClass = 'sortable';
     if (currentSort.column === i) {
       sortClass = currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc';
     }
-    html += '<th class="' + sortClass + '" onclick="sortTable(' + i + ')">' + tableHeaders[i] + '</th>';
+    html += '<th class="' + sortClass + '" onclick="sortTable(' + i + ')">' + displayHeaders[i] + '</th>';
   }
   html += '</tr></thead><tbody>';
   
   for (var j = 0; j < filteredData.length; j++) {
     html += '<tr>';
-    for (var k = 0; k < tableHeaders.length; k++) {
-      var value = filteredData[j][tableHeaders[k]];
-      var formattedValue = formatValue(tableHeaders[k], value);
+    for (var k = 0; k < displayHeaders.length; k++) {
+      var value = filteredData[j][displayHeaders[k]];
+      var formattedValue = formatValue(displayHeaders[k], value);
       html += '<td>' + formattedValue + '</td>';
     }
     html += '</tr>';
@@ -302,18 +330,6 @@ function renderTable() {
   
   html += '</tbody></table>';
   document.getElementById('custom-table').innerHTML = html;
-}
-
-function initializeFilters() {
-  var filterColumnSelect = document.getElementById('filter-column');
-  filterColumnSelect.innerHTML = '<option value="">All Columns</option>';
-  
-  for (var i = 0; i < tableHeaders.length; i++) {
-    var option = document.createElement('option');
-    option.value = tableHeaders[i];
-    option.textContent = tableHeaders[i];
-    filterColumnSelect.appendChild(option);
-  }
 }
 
 fetch(API_URL)
@@ -328,8 +344,9 @@ fetch(API_URL)
       return;
     }
     
-    tableHeaders = Object.keys(tableData[0]);
-    initializeFilters();
+    allHeaders = Object.keys(tableData[0]);
+    displayHeaders = allHeaders.slice();
+    
     document.getElementById('result-count').textContent = 
       'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
     renderTable();
