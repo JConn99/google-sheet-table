@@ -31,6 +31,29 @@ th {
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.5px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+th:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #63408b 100%);
+}
+
+th.sortable::after {
+  content: ' ⇅';
+  opacity: 0.5;
+  font-size: 14px;
+}
+
+th.sorted-asc::after {
+  content: ' ▲';
+  opacity: 1;
+}
+
+th.sorted-desc::after {
+  content: ' ▼';
+  opacity: 1;
 }
 
 td {
@@ -62,7 +85,6 @@ tbody tr:hover {
 <script>
 var API_URL = 'https://script.google.com/macros/s/AKfycbzAhG4WtObR3IpGeCcsnmp6RKImp3f_cU_S4xM-paDpELd4UxizE_Yfp_cbtGLPQY2m6w/exec';
 
-// Columns that should be formatted as percentages (exact lowercase names from your sheet)
 var percentageColumns = [
   'saturday_poss_points_per',
   'saturday_win_per',
@@ -72,56 +94,108 @@ var percentageColumns = [
   'total_win_per'
 ];
 
+var tableData = [];
+var currentSort = { column: null, direction: 'asc' };
+
 function formatValue(header, value) {
-  // If value is empty, null, or undefined, return 0
   if (value === '' || value === null || value === undefined) {
     return '0';
   }
   
   if (percentageColumns.indexOf(header) !== -1) {
-    // Convert decimal to percentage (0.155 -> 15.5%)
     var numValue = parseFloat(value);
     if (!isNaN(numValue)) {
       return (numValue * 100).toFixed(1) + '%';
     }
-    // If it's a percentage column but not a number, show 0%
     return '0.0%';
   }
   
   return value;
 }
 
+function getRawValue(header, value) {
+  // Return the raw numeric value for sorting
+  if (value === '' || value === null || value === undefined) {
+    return 0;
+  }
+  
+  if (percentageColumns.indexOf(header) !== -1) {
+    var numValue = parseFloat(value);
+    return isNaN(numValue) ? 0 : numValue;
+  }
+  
+  var num = parseFloat(value);
+  return isNaN(num) ? value : num;
+}
+
+function sortTable(columnIndex, headers) {
+  var column = headers[columnIndex];
+  
+  // Toggle direction if clicking same column
+  if (currentSort.column === columnIndex) {
+    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+  } else {
+    currentSort.column = columnIndex;
+    currentSort.direction = 'asc';
+  }
+  
+  tableData.sort(function(a, b) {
+    var aVal = getRawValue(column, a[column]);
+    var bVal = getRawValue(column, b[column]);
+    
+    // Handle string vs number comparison
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      aVal = aVal.toLowerCase();
+      bVal = bVal.toLowerCase();
+    }
+    
+    if (aVal < bVal) return currentSort.direction === 'asc' ? -1 : 1;
+    if (aVal > bVal) return currentSort.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+  
+  renderTable(headers);
+}
+
+function renderTable(headers) {
+  var html = '<table><thead><tr>';
+  
+  for (var i = 0; i < headers.length; i++) {
+    var sortClass = 'sortable';
+    if (currentSort.column === i) {
+      sortClass = currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc';
+    }
+    html += '<th class="' + sortClass + '" onclick="sortTable(' + i + ', ' + JSON.stringify(headers) + ')">' + headers[i] + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  
+  for (var j = 0; j < tableData.length; j++) {
+    html += '<tr>';
+    for (var k = 0; k < headers.length; k++) {
+      var value = tableData[j][headers[k]];
+      var formattedValue = formatValue(headers[k], value);
+      html += '<td>' + formattedValue + '</td>';
+    }
+    html += '</tr>';
+  }
+  
+  html += '</tbody></table>';
+  document.getElementById('custom-table').innerHTML = html;
+}
+
 fetch(API_URL)
   .then(function(res) { return res.json(); })
   .then(function(response) {
-    var data = response.data;
+    tableData = response.data;
     var tableDiv = document.getElementById('custom-table');
     
-    if (!data || data.length === 0) {
+    if (!tableData || tableData.length === 0) {
       tableDiv.innerHTML = '<p>No data available</p>';
       return;
     }
     
-    var headers = Object.keys(data[0]);
-    var html = '<table><thead><tr>';
-    
-    for (var i = 0; i < headers.length; i++) {
-      html += '<th>' + headers[i] + '</th>';
-    }
-    html += '</tr></thead><tbody>';
-    
-    for (var j = 0; j < data.length; j++) {
-      html += '<tr>';
-      for (var k = 0; k < headers.length; k++) {
-        var value = data[j][headers[k]];
-        var formattedValue = formatValue(headers[k], value);
-        html += '<td>' + formattedValue + '</td>';
-      }
-      html += '</tr>';
-    }
-    
-    html += '</tbody></table>';
-    tableDiv.innerHTML = html;
+    var headers = Object.keys(tableData[0]);
+    renderTable(headers);
   })
   .catch(function(error) {
     console.error('Error:', error);
