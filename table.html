@@ -39,6 +39,8 @@ body {
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
+  min-width: 140px;
+  text-align: center;
 }
 
 #filter-container button:hover {
@@ -82,6 +84,7 @@ th {
   cursor: pointer;
   user-select: none;
   position: relative;
+  white-space: nowrap;
 }
 
 th:hover {
@@ -173,6 +176,24 @@ var displayHeaders = [];
 var filteredData = [];
 var currentSort = { column: null, direction: 'asc' };
 var activeColumnFilter = null;
+
+// Function to make header names readable
+function formatHeaderName(header) {
+  // Special cases for percentage columns
+  if (header.indexOf('poss_points_per') !== -1) {
+    var prefix = header.split('_poss_points_per')[0];
+    return prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Possible Points Percentage';
+  }
+  if (header.indexOf('win_per') !== -1) {
+    var prefix = header.split('_win_per')[0];
+    return prefix.charAt(0).toUpperCase() + prefix.slice(1) + ' Win Percentage';
+  }
+  
+  // Default: replace underscores with spaces and capitalize each word
+  return header.split('_').map(function(word) {
+    return word.charAt(0).toUpperCase() + word.slice(1);
+  }).join(' ');
+}
 
 function formatValue(header, value) {
   if (value === '' || value === null || value === undefined) {
@@ -314,7 +335,8 @@ function renderTable() {
     if (currentSort.column === i) {
       sortClass = currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc';
     }
-    html += '<th class="' + sortClass + '" onclick="sortTable(' + i + ')">' + displayHeaders[i] + '</th>';
+    var readableHeader = formatHeaderName(displayHeaders[i]);
+    html += '<th class="' + sortClass + '" onclick="sortTable(' + i + ')">' + readableHeader + '</th>';
   }
   html += '</tr></thead><tbody>';
   
