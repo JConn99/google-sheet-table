@@ -128,7 +128,8 @@ function getRawValue(header, value) {
   return isNaN(num) ? value : num;
 }
 
-function sortTable(columnIndex) {
+window.sortTable = function(columnIndex) {
+  console.log('Sorting column:', columnIndex);
   var column = tableHeaders[columnIndex];
   
   if (currentSort.column === columnIndex) {
@@ -137,6 +138,8 @@ function sortTable(columnIndex) {
     currentSort.column = columnIndex;
     currentSort.direction = 'asc';
   }
+  
+  console.log('Sort direction:', currentSort.direction);
   
   tableData.sort(function(a, b) {
     var aVal = getRawValue(column, a[column]);
@@ -156,6 +159,7 @@ function sortTable(columnIndex) {
 }
 
 function renderTable() {
+  console.log('Rendering table');
   var html = '<table><thead><tr>';
   
   for (var i = 0; i < tableHeaders.length; i++) {
@@ -163,7 +167,7 @@ function renderTable() {
     if (currentSort.column === i) {
       sortClass = currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc';
     }
-    html += '<th class="' + sortClass + '" data-column="' + i + '">' + tableHeaders[i] + '</th>';
+    html += '<th class="' + sortClass + '" onclick="sortTable(' + i + ')">' + tableHeaders[i] + '</th>';
   }
   html += '</tr></thead><tbody>';
   
@@ -179,15 +183,6 @@ function renderTable() {
   
   html += '</tbody></table>';
   document.getElementById('custom-table').innerHTML = html;
-  
-  // Add event listeners after rendering
-  var ths = document.querySelectorAll('th[data-column]');
-  for (var i = 0; i < ths.length; i++) {
-    ths[i].addEventListener('click', function() {
-      var columnIndex = parseInt(this.getAttribute('data-column'));
-      sortTable(columnIndex);
-    });
-  }
 }
 
 fetch(API_URL)
@@ -202,6 +197,7 @@ fetch(API_URL)
     }
     
     tableHeaders = Object.keys(tableData[0]);
+    console.log('Headers loaded:', tableHeaders);
     renderTable();
   })
   .catch(function(error) {
