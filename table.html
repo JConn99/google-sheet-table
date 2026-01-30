@@ -11,6 +11,52 @@ body {
   background: transparent;
 }
 
+#filter-container {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+#filter-container input,
+#filter-container select {
+  padding: 8px 12px;
+  margin: 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+#filter-container input {
+  min-width: 200px;
+}
+
+#filter-container select {
+  min-width: 150px;
+}
+
+#filter-container button {
+  padding: 8px 16px;
+  margin: 5px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#filter-container button:hover {
+  background: #5568d3;
+}
+
+.filter-row {
+  margin: 5px 0;
+}
+
 #custom-table {
   max-width: 100%;
   overflow-x: auto;
@@ -75,9 +121,33 @@ tbody tr:hover {
   padding: 40px;
   color: #6b7280;
 }
+
+.result-count {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #6b7280;
+}
 </style>
 </head>
 <body>
+<div id="filter-container">
+  <div class="filter-row">
+    <strong>Search:</strong>
+    <input type="text" id="search-input" placeholder="Search all columns..." onkeyup="applyFilters()">
+  </div>
+  <div class="filter-row">
+    <strong>Filter by Column:</strong>
+    <select id="filter-column" onchange="applyFilters()">
+      <option value="">All Columns</option>
+    </select>
+    <input type="text" id="filter-value" placeholder="Filter value..." onkeyup="applyFilters()">
+  </div>
+  <div class="filter-row">
+    <button onclick="clearFilters()">Clear Filters</button>
+  </div>
+  <div class="result-count" id="result-count"></div>
+</div>
+
 <div id="custom-table">
   <div class="loading">Loading data...</div>
 </div>
@@ -96,6 +166,7 @@ var percentageColumns = [
 
 var tableData = [];
 var tableHeaders = [];
+var filteredData = [];
 var currentSort = { column: null, direction: 'asc' };
 
 function formatValue(header, value) {
@@ -128,8 +199,12 @@ function getRawValue(header, value) {
   return isNaN(num) ? value : num;
 }
 
+function getDisplayValue(header, value) {
+  // Get the value as it appears in the table for filtering
+  return formatValue(header, value).toString().toLowerCase();
+}
+
 window.sortTable = function(columnIndex) {
-  console.log('Sorting column:', columnIndex);
   var column = tableHeaders[columnIndex];
   
   if (currentSort.column === columnIndex) {
@@ -139,9 +214,7 @@ window.sortTable = function(columnIndex) {
     currentSort.direction = 'asc';
   }
   
-  console.log('Sort direction:', currentSort.direction);
-  
-  tableData.sort(function(a, b) {
+  filteredData.sort(function(a, b) {
     var aVal = getRawValue(column, a[column]);
     var bVal = getRawValue(column, b[column]);
     
@@ -158,8 +231,54 @@ window.sortTable = function(columnIndex) {
   renderTable();
 }
 
+window.applyFilters = function() {
+  var searchTerm = document.getElementById('search-input').value.toLowerCase();
+  var filterColumn = document.getElementById('filter-column').value;
+  var filterValue = document.getElementById('filter-value').value.toLowerCase();
+  
+  filteredData = tableData.filter(function(row) {
+    // Apply global search
+    if (searchTerm) {
+      var matchFound = false;
+      for (var i = 0; i < tableHeaders.length; i++) {
+        var displayValue = getDisplayValue(tableHeaders[i], row[tableHeaders[i]]);
+        if (displayValue.indexOf(searchTerm) !== -1) {
+          matchFound = true;
+          break;
+        }
+      }
+      if (!matchFound) return false;
+    }
+    
+    // Apply column-specific filter
+    if (filterColumn && filterValue) {
+      var columnValue = getDisplayValue(filterColumn, row[filterColumn]);
+      if (columnValue.indexOf(filterValue) === -1) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+  
+  // Update result count
+  document.getElementById('result-count').textContent = 
+    'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
+  
+  renderTable();
+}
+
+window.clearFilters = function() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-column').value = '';
+  document.getElementById('filter-value').value = '';
+  filteredData = tableData.slice();
+  document.getElementById('result-count').textContent = 
+    'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
+  renderTable();
+}
+
 function renderTable() {
-  console.log('Rendering table');
   var html = '<table><thead><tr>';
   
   for (var i = 0; i < tableHeaders.length; i++) {
@@ -171,10 +290,10 @@ function renderTable() {
   }
   html += '</tr></thead><tbody>';
   
-  for (var j = 0; j < tableData.length; j++) {
+  for (var j = 0; j < filteredData.length; j++) {
     html += '<tr>';
     for (var k = 0; k < tableHeaders.length; k++) {
-      var value = tableData[j][tableHeaders[k]];
+      var value = filteredData[j][tableHeaders[k]];
       var formattedValue = formatValue(tableHeaders[k], value);
       html += '<td>' + formattedValue + '</td>';
     }
@@ -185,10 +304,23 @@ function renderTable() {
   document.getElementById('custom-table').innerHTML = html;
 }
 
+function initializeFilters() {
+  var filterColumnSelect = document.getElementById('filter-column');
+  filterColumnSelect.innerHTML = '<option value="">All Columns</option>';
+  
+  for (var i = 0; i < tableHeaders.length; i++) {
+    var option = document.createElement('option');
+    option.value = tableHeaders[i];
+    option.textContent = tableHeaders[i];
+    filterColumnSelect.appendChild(option);
+  }
+}
+
 fetch(API_URL)
   .then(function(res) { return res.json(); })
   .then(function(response) {
     tableData = response.data;
+    filteredData = tableData.slice();
     var tableDiv = document.getElementById('custom-table');
     
     if (!tableData || tableData.length === 0) {
@@ -197,7 +329,9 @@ fetch(API_URL)
     }
     
     tableHeaders = Object.keys(tableData[0]);
-    console.log('Headers loaded:', tableHeaders);
+    initializeFilters();
+    document.getElementById('result-count').textContent = 
+      'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
     renderTable();
   })
   .catch(function(error) {
