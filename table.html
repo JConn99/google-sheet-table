@@ -264,10 +264,17 @@ var activeColumnFilter = null;
 
 // Function to get URL parameters
 function getUrlParameter(name) {
+  console.log('Getting URL parameter:', name);
+  console.log('Current URL:', window.location.href);
+  console.log('Search string:', window.location.search);
+  
   name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
   var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
   var results = regex.exec(location.search);
-  return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+  var value = results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+  
+  console.log('Parameter value found:', value);
+  return value;
 }
 
 function formatHeaderName(header) {
@@ -375,6 +382,7 @@ window.filterColumns = function(type) {
 
 window.applyFilters = function() {
   var searchTerm = document.getElementById('search-input').value.toLowerCase();
+  console.log('Applying filters with search term:', searchTerm);
   
   filteredData = tableData.filter(function(row) {
     if (searchTerm) {
@@ -386,6 +394,8 @@ window.applyFilters = function() {
     
     return true;
   });
+  
+  console.log('Filtered results:', filteredData.length, 'of', tableData.length);
   
   document.getElementById('result-count').textContent = 
     'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
@@ -466,20 +476,27 @@ function renderTable() {
 }
 
 function initializeFromUrl() {
+  console.log('Initializing from URL...');
   // Check if there's a last_name parameter in the URL
   var lastNameParam = getUrlParameter('last_name');
   
+  console.log('Last name param:', lastNameParam);
+  
   if (lastNameParam) {
+    console.log('Setting search input to:', lastNameParam);
     // Set the search input value
     document.getElementById('search-input').value = lastNameParam;
     // Apply the filter
     applyFilters();
+  } else {
+    console.log('No last_name parameter found in URL');
   }
 }
 
 fetch(API_URL)
   .then(function(res) { return res.json(); })
   .then(function(response) {
+    console.log('Data loaded from API');
     tableData = response.data;
     filteredData = tableData.slice();
     var tableDiv = document.getElementById('custom-table');
