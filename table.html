@@ -262,6 +262,14 @@ var filteredData = [];
 var currentSort = { column: null, direction: 'asc' };
 var activeColumnFilter = null;
 
+// Function to get URL parameters
+function getUrlParameter(name) {
+  name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+  var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+  var results = regex.exec(location.search);
+  return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+}
+
 function formatHeaderName(header) {
   if (header.indexOf('poss_points_per') !== -1) {
     var prefix = header.split('_poss_points_per')[0];
@@ -457,6 +465,18 @@ function renderTable() {
   document.getElementById('custom-table').innerHTML = html;
 }
 
+function initializeFromUrl() {
+  // Check if there's a last_name parameter in the URL
+  var lastNameParam = getUrlParameter('last_name');
+  
+  if (lastNameParam) {
+    // Set the search input value
+    document.getElementById('search-input').value = lastNameParam;
+    // Apply the filter
+    applyFilters();
+  }
+}
+
 fetch(API_URL)
   .then(function(res) { return res.json(); })
   .then(function(response) {
@@ -474,6 +494,10 @@ fetch(API_URL)
     
     document.getElementById('result-count').textContent = 
       'Showing ' + filteredData.length + ' of ' + tableData.length + ' rows';
+    
+    // Initialize from URL parameters
+    initializeFromUrl();
+    
     renderTable();
   })
   .catch(function(error) {
